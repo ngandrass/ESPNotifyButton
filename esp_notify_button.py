@@ -10,6 +10,7 @@ __version__ = "0.0.1"
 __license__ = "MIT"
 
 from machine import Pin
+from urequests import urequests as requests
 
 # Pin mapping
 PIN_LED_ONBOARD = Pin(2, mode=Pin.OUT, value=True)
@@ -55,7 +56,7 @@ def setup_wifi(ssid, password) -> None:
     print('Connected to wifi network: ', wlan.ifconfig())
 
 
-def setLed(state):
+def set_led(state):
     """
     Updates the state of the LED.
 
@@ -76,13 +77,53 @@ def setLed(state):
         PIN_LED_RED.off()
 
 
+def send_telegram_msg(text=None, bot_token=None, chat_id=None) -> bool:
+    """
+    Sends a new telegram message
+
+    :param text: Message text to send. Defaults to CONFIG['telegram']['default_msg']
+    :param bot_token: API-token of the bot to use. Defaults to CONFIG['telegram']['bot_token']
+    :param chat_id: Chat-ID to send the message to. Defaults to CONFIG['telegram']['chat_id']
+    :return: bool indicating if message was send successful
+    """
+    # Apply defaults if necessary
+    if text is None:
+        text = CONFIG['telegram']['default_msg']
+
+    if bot_token is None:
+        bot_token = CONFIG['telegram']['bot_token']
+
+    if chat_id is None:
+        chat_id = CONFIG['telegram']['chat_id']
+
+    # Do API call
+    r = requests.get('https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}'.format(
+        bot_token,
+        chat_id,
+        text
+    ))
+
+    # Check if call was successful
+    if r.status_code != 200 or not r.json()['ok']:
+        return False
+
+    return True
+
+
 def main():
     global CONFIG
     CONFIG = load_config()
 
-    setLed('red')
+    # Connect to wifi
+    set_led('red')
     setup_wifi(CONFIG['wifi_ssid'], CONFIG['wifi_pass'])
-    setLed('orange')
+    set_led('orange')
+
+    # Try to send a telegram message
+    if send_telegram_msg("Foo Bar Baz!"):
+        set_led('green')
+    else:
+        set_led('red')
 
 
 if __name__ == "__main__":

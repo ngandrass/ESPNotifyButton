@@ -1,4 +1,9 @@
 {
     "wifi_ssid": "Example Network",
-    "wifi_pass": "super-secret42"
+    "wifi_pass": "super-secret42",
+    "telegram": {
+        "bot_token": "paste your bot token from @BotFather here",
+        "chat_id": "chat-id to send messages to",
+        "default_msg": "A default message to send"
+    }
 }

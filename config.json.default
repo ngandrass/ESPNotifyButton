@@ -1,6 +1,7 @@
 {
     "wifi_ssid": "Example Network",
     "wifi_pass": "super-secret42",
+    "button_deadtime_ms": 5000,
     "telegram": {
         "bot_token": "paste your bot token from @BotFather here",
         "chat_id": "chat-id to send messages to",

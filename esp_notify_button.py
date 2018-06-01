@@ -9,7 +9,7 @@ __email__ = "ngandrass@squacu.de"
 __version__ = "0.0.1"
 __license__ = "MIT"
 
-from machine import Pin
+from machine import Pin, Timer
 from urequests import urequests as requests
 
 # Pin mapping
@@ -19,6 +19,9 @@ PIN_LED_RED     = Pin(4, mode=Pin.OUT, value=False)
 PIN_BUTTON      = Pin(12, mode=Pin.IN, pull=Pin.PULL_UP)
 
 CONFIG = {}  # Holds configuration once load_config() was called
+
+BTN_DEADTIM = Timer(-1)  # Timer used for button dead time delay
+BTN_DISABLE = False      # If button is in dead time mode
 
 
 def load_config(cfg_file="config.json") -> dict:
@@ -49,10 +52,12 @@ def setup_wifi(ssid, password) -> None:
     wlan.active(True)
     if not wlan.isconnected():
         print('Connecting to wifi network "', ssid, '"...')
+        set_led('red')
         wlan.connect(ssid, password)
         while not wlan.isconnected():
             pass
 
+    set_led('orange')
     print('Connected to wifi network: ', wlan.ifconfig())
 
 
@@ -110,20 +115,58 @@ def send_telegram_msg(text=None, bot_token=None, chat_id=None) -> bool:
     return True
 
 
-def main():
+def arm_button(timer=None) -> None:
+    """
+    (Re-)Enables the trigger button
+
+    :return: None
+    """
+    global BTN_DISABLE
+
+    set_led('orange')
+    BTN_DISABLE = False
+    print('Armed trigger button')
+
+
+def button_irqhandler(pin) -> None:
+    """
+    Interrupt request handler for trigger button interrupt.
+
+    :return: None
+    """
+    # Ignore button IRQ until re-enabled by timer after dead time
+    global BTN_DISABLE
+
+    if BTN_DISABLE:
+        return
+    else:
+        BTN_DISABLE = True
+
+    # Try to send a telegram message
+    if send_telegram_msg():
+        set_led('green')
+    else:
+        set_led('red')
+
+    # Arm timer to re-enable button irq after dead time
+    BTN_DEADTIM.init(period=CONFIG['button_deadtime_ms'], mode=Timer.ONE_SHOT, callback=arm_button)
+
+
+def main() -> None:
+    """
+    Main entry point. Configures chip, connects to wifi and arms interrupts.
+
+    :return: None
+    """
     global CONFIG
     CONFIG = load_config()
 
     # Connect to wifi
-    set_led('red')
     setup_wifi(CONFIG['wifi_ssid'], CONFIG['wifi_pass'])
-    set_led('orange')
 
-    # Try to send a telegram message
-    if send_telegram_msg("Foo Bar Baz!"):
-        set_led('green')
-    else:
-        set_led('red')
+    # Configure and arm trigger button
+    PIN_BUTTON.irq(handler=button_irqhandler, trigger=Pin.IRQ_FALLING)
+    arm_button()
 
 
 if __name__ == "__main__":

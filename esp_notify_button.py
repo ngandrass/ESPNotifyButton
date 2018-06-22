@@ -57,7 +57,7 @@ def setup_wifi(ssid, password) -> None:
         while not wlan.isconnected():
             pass
 
-    set_led('orange')
+    set_led('green')
     print('Connected to wifi network: ', wlan.ifconfig())
 
 
@@ -123,7 +123,7 @@ def arm_button(timer=None) -> None:
     """
     global BTN_DISABLE
 
-    set_led('orange')
+    set_led('green')
     BTN_DISABLE = False
     print('Armed trigger button')
 
@@ -143,9 +143,9 @@ def button_irqhandler(pin) -> None:
         BTN_DISABLE = True
 
     # Try to send a telegram message
-    if send_telegram_msg():
-        set_led('green')
-    else:
+    set_led('orange')
+
+    if not send_telegram_msg():
         set_led('red')
 
     # Arm timer to re-enable button irq after dead time

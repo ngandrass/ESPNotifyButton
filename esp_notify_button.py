@@ -11,6 +11,7 @@ __license__ = "MIT"
 
 from machine import Pin, Timer
 from urequests import urequests as requests
+import time
 
 # Pin mapping
 PIN_LED_ONBOARD = Pin(2, mode=Pin.OUT, value=True)
@@ -123,7 +124,12 @@ def arm_button(timer=None) -> None:
     """
     global BTN_DISABLE
 
-    set_led('green')
+    # Keep LED orange if button is still triggered
+    if not PIN_BUTTON.value():
+        set_led('orange')
+    else:
+        set_led('green')
+
     BTN_DISABLE = False
     print('Armed trigger button')
 
@@ -139,10 +145,15 @@ def button_irqhandler(pin) -> None:
 
     if BTN_DISABLE:
         return
-    else:
-        BTN_DISABLE = True
+
+    # Quick'n'dirty debounce
+    time.sleep(1)
+    if PIN_BUTTON.value():
+        set_led('green')
+        return
 
     # Try to send a telegram message
+    BTN_DISABLE = True
     set_led('orange')
 
     if not send_telegram_msg():
